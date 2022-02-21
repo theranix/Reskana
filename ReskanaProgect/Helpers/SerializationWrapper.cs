@@ -15,7 +15,7 @@ namespace ReskanaProgect.Helpers
 
 
 
-        public void Handler(in BufferSegmentStruct packet)
+        public void Handler(in BufferSegment packet)
         {
             try
             {

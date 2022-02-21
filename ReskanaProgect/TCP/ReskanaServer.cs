@@ -12,7 +12,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace ReskanaProgect.Network
+namespace ReskanaProgect.TCP
 {
     /// <summary>
     /// High-performance accruate and thread-safe async server implementation, including pool

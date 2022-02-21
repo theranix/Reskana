@@ -12,17 +12,14 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
-namespace ReskanaProgect.Network
+namespace ReskanaProgect.TCP
 {
-    /// <summary>
-    /// High-performance accruate and thread-safe Socket async I/O implementation
-    /// </summary>
     public class ReskanaClientUdp : IDisposable
     {
         /// <summary>
         /// This event is synchronous!
         /// </summary>
-        public event Action<BufferSegmentStruct> NextPacket;
+        public event Action<BufferSegment> NextPacket;
         /// <summary>
         /// Client must be stopped manually, by calling method!
         /// </summary>
@@ -85,16 +82,8 @@ namespace ReskanaProgect.Network
             lock (socketStatusLock)
             {
                 this.connection = new ReskanaConnection(useApi ?? new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp), true);
-                //connection.Api.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
                 isStarted = true;
-
-                /*if (!IsAtServer)
-                {
-                    connection.Api.Bind(new IPEndPoint(IPAddress.Any, endPoint.Port));
-                }*/
-
-                connection.Api.ReceiveTimeout = 3000;
-                int numRetries = 3000;
+                int numRetries = 4;
 
                 while (numRetries-- > 0)
                 {
@@ -112,7 +101,6 @@ namespace ReskanaProgect.Network
                         }
                         else
                         {
-                            //connection.Api.Connect(endPoint);
                             connection.Api.SendTo(new byte[] { 254 }, endPoint);
                             connection.Api.SendTo(new byte[] { 254 }, endPoint);
                         }
@@ -158,6 +146,9 @@ namespace ReskanaProgect.Network
 
         public void StartReceiving()
         {
+            if (IsAtServer)
+                return; //ExternalApiReceive
+
             try
             {
                 bool sync;
@@ -180,6 +171,15 @@ namespace ReskanaProgect.Network
             }
         }
 
+        public void ExternalApiReceive(in BufferSegment segment)
+        {
+            var err = net.ReceiveNext(segment);
+            if (err != ReskanaError.None)
+            {
+                ConnectionWasBroken?.Invoke(err);
+                return;
+            }
+        }
 
         private unsafe void OnReceived(object e, SocketAsyncEventArgs saea)
         {
@@ -202,7 +202,7 @@ namespace ReskanaProgect.Network
             }
 
             int available = saea.Offset + saea.BytesTransferred;
-            var err = net.ReceiveNext(new BufferSegmentStruct(saea.Buffer, 0, available));
+            var err = net.ReceiveNext(new BufferSegment(saea.Buffer, 0, available));
             if (err != ReskanaError.None)
             {
                 ConnectionWasBroken?.Invoke(err);
@@ -214,7 +214,7 @@ namespace ReskanaProgect.Network
             StartReceiving();
         }
 
-        public unsafe void Send(in BufferSegmentStruct data)
+        public unsafe void Send(in BufferSegment data)
         {
             lock (socketStatusLock)
             {
@@ -229,7 +229,7 @@ namespace ReskanaProgect.Network
             StartSending();*/
         }
 
-        private void SendInternal(BufferSegmentStruct data)
+        private void SendInternal(BufferSegment data)
         {
             lock (socketStatusLock)
             {

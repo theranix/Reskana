@@ -3,7 +3,7 @@
 
 using LiteNetLib;
 using LiteNetLib.Utils;
-using ReskanaProgect.Network;
+using ReskanaProgect.TCP;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -67,7 +67,7 @@ namespace ReskanaProgect
 
 
 
-            bool useSERVER = false;
+            bool useSERVER = true;
             bool useCLIENT = true;
 
 
@@ -126,15 +126,6 @@ namespace ReskanaProgect
 
 
 
-
-
-
-
-
-
-
-
-
             Config.InternalErrorsLogger = x => Console.WriteLine(x);
 
             if (useSERVER)
@@ -182,47 +173,17 @@ namespace ReskanaProgect
 
             if (useCLIENT)
             {
-                const int numClients = 1;
+                const int numClients = 10;
                 const int numPacketsLifetime = int.MaxValue;//10000;
                 int currentClients = 0;
                 object locker2 = new object();
-
-                new Thread(() =>
-                {
-                    var tcpClient = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                    tcpClient.Connect(IPAddress.Parse("194.169.160.240"), 27778);
-                    var buffer = new byte[10000];
-                    var pingCpunter = new ValueGraph(20);
-                    var pingCpunter2 = new ValueGraph(2000);
-                    var pingTimer = Stopwatch.StartNew();
-                    float maxPing = 0;
-                    tcpClient.Send(new byte[5000]);
-                    while (true)
-                    {
-                        var num = tcpClient.Receive(buffer);
-                        if (num > 0)
-                        {
-                            tcpClient.Send(buffer, num, SocketFlags.None);
-                            pingCpunter.Push((float)pingTimer.Elapsed.TotalMilliseconds / 2f); //one-way
-                            pingCpunter2.Push((float)pingTimer.Elapsed.TotalMilliseconds / 2f); //one-way
-                            pingTimer.Restart();
-                            Console.Title = "Tcp ping: " + Math.Round(pingCpunter.Avg, 2) + " (avg " + (int)pingCpunter2.Avg + ")";
-                            if (pingCpunter.Avg > maxPing)
-                            {
-                                maxPing = pingCpunter.Avg;
-                                Console.WriteLine("maxPing tcp " + maxPing);
-                            }
-                        }
-                    }
-
-                }).Start();
 
                 while (true)
                 {
                     int q = numPacketsLifetime;
 
-                    //var udpClient = new ReskanaClientUdp(new IPEndPoint(IPAddress.Parse("192.168.1.77"), 27777));
-                    var udpClient = new ReskanaClientUdp(new IPEndPoint(IPAddress.Parse("194.169.160.240"), 27777));
+                    var udpClient = new ReskanaClientUdp(new IPEndPoint(IPAddress.Parse("192.168.1.77"), 27777));
+                    //var udpClient = new ReskanaClientUdp(new IPEndPoint(IPAddress.Parse("194.169.160.240"), 27777));
 
                     udpClient.NextPacket += (packet) =>
                     {
@@ -238,7 +199,7 @@ namespace ReskanaProgect
                     if (udpClient.TryConnect(null))
                     {
                         udpClient.StartReceiving();
-                        udpClient.Send(new BufferSegmentStruct()
+                        udpClient.Send(new BufferSegment()
                         {
                             Buffer = Enumerable.Range(0, 5000).Select(x => (byte)(x % 256)).ToArray(),
                             Length = 5000
@@ -286,7 +247,7 @@ namespace ReskanaProgect
 
             
             var response1 = Encoding.UTF32.GetBytes("Received!");
-            var sendBuffer2 = new BufferSegmentStruct(response1, 0, response1.Length);
+            var sendBuffer2 = new BufferSegment(response1, 0, response1.Length);
 
             var server = new ReskanaServer(100, new IPEndPoint(IPAddress.Any, 27777));
             int f = 0;
@@ -387,8 +348,8 @@ namespace ReskanaProgect
                                 random.NextBytes(data);
 
                                 received = false;
-                                client.Send(new BufferSegmentStruct(data, 0, data.Length));
-                                client.Send(new BufferSegmentStruct(data, 0, data.Length));
+                                client.Send(new BufferSegment(data, 0, data.Length));
+                                client.Send(new BufferSegment(data, 0, data.Length));
 
                                 /*int t = 4;
                                 Parallel.For(0, 4, x =>

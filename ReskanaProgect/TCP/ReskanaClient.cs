@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
-namespace ReskanaProgect.Network
+namespace ReskanaProgect.TCP
 {
     /// <summary>
     /// High-performance accruate and thread-safe Socket async I/O implementation
@@ -21,7 +21,7 @@ namespace ReskanaProgect.Network
         /// <summary>
         /// This event is synchronous!
         /// </summary>
-        public event Action<BufferSegmentStruct> NextPacket;
+        public event Action<BufferSegment> NextPacket;
         /// <summary>
         /// Client must be stopped manually, by calling method!
         /// </summary>
@@ -245,7 +245,7 @@ namespace ReskanaProgect.Network
                         packetOrderRemote == nextHeader.control)
                     {
                         packetOrderRemote++;
-                        var packet = new BufferSegmentStruct(
+                        var packet = new BufferSegment(
                             buffer,
                             InternalHeader.length,
                             nextHeader.totalLength - InternalHeader.length);
@@ -288,7 +288,7 @@ namespace ReskanaProgect.Network
             StartReceiving();
         }
 
-        public unsafe void Send(in BufferSegmentStruct data)
+        public unsafe void Send(in BufferSegment data)
         {
             byte control = 0;
             lock (sendQueueLock)
@@ -314,7 +314,7 @@ namespace ReskanaProgect.Network
             StartSending();
         }
 
-        private unsafe void PutPacket(in BufferSegmentStruct data, byte[] dst, int dstStart, byte control)
+        private unsafe void PutPacket(in BufferSegment data, byte[] dst, int dstStart, byte control)
         {
             //Header:
             var header = new InternalHeader(

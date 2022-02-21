@@ -12,7 +12,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace ReskanaProgect.Network
+namespace ReskanaProgect.TCP
 {
     public class ReskanaServerUdp
     {
@@ -34,6 +34,9 @@ namespace ReskanaProgect.Network
         private object syncRoot = new object();
         private IPEndPoint listenFrom;
 
+        //TODO: Refactor
+        private ConcurrentDictionary<IPAddress, ReskanaClientUdp> clients = new ConcurrentDictionary<IPAddress, ReskanaClientUdp>();
+
         public Socket Test => listener;
 
         public ReskanaServerUdp(int approxOnline, IPEndPoint listen)
@@ -53,9 +56,10 @@ namespace ReskanaProgect.Network
             listener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             listener.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.ReuseAddress, true);
             listener.Bind(listenFrom);
-
+            listener.ReceiveTimeout = 3000; //for blocking api
+            
             var saea = new SocketAsyncEventArgs();
-            saea.SetBuffer(new byte[128], 0, 128);
+            saea.SetBuffer(new byte[Config.SaeaBufferSize * 2], 0, Config.SaeaBufferSize * 2);
             saea.Completed += FetchBySaea;
             saea.RemoteEndPoint = listenFrom;
             ThreadPool.QueueUserWorkItem(x => Iteration((SocketAsyncEventArgs)x), saea);
@@ -63,33 +67,48 @@ namespace ReskanaProgect.Network
 
         private void Iteration(SocketAsyncEventArgs saea)
         {
-            lock (syncRoot)
+            saea.SetBuffer(0, saea.Buffer.Length);
+            try
             {
-                if (!isListening)
-                    return;
-
                 if (!listener.ReceiveFromAsync(saea))
                     FetchBySaea(this, saea);
+            }
+            catch (Exception e)
+            {
+                lock (syncRoot)
+                {
+                    if (!isListening)
+                        return;
+                }
+
+                //TODO: do something
             }
         }
 
         private void FetchBySaea(object e, SocketAsyncEventArgs saea)
         {
-            if (saea.SocketError != SocketError.SocketError && saea.Buffer[0] == 255)
+            if (saea.SocketError == SocketError.Success)
             {
-                try
+                var ipEndPoint = saea.RemoteEndPoint as IPEndPoint;
+                if (saea.Buffer[0] == 255)
                 {
-                    FetchConnection(saea.RemoteEndPoint as IPEndPoint);//.ReceiveMessageFromPacketInfo.Address);
+                    try
+                    {
+                        FetchConnection(ipEndPoint);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (Config.InternalErrorsLogger != null)
+                            Config.InternalErrorsLogger("ReskanaUDP: Error while FetchConnection");
+                    }
                 }
-                catch (Exception ex)
+                else
                 {
-                    if (Config.InternalErrorsLogger != null)
-                        Config.InternalErrorsLogger("ReskanaUDP: Error while FetchConnection");
+                    if (clients.TryGetValue(ipEndPoint.Address, out var client))
+                        client.ExternalApiReceive(new BufferSegment(saea.Buffer, 0, saea.BytesTransferred));
                 }
             }
-
-            //TODO: temporary dis
-            //Iteration(saea);
+            Iteration(saea);
         }
 
         public void Stop()
@@ -109,6 +128,7 @@ namespace ReskanaProgect.Network
                 {
                     var client = new ReskanaClientUdp(ep, this);
                     NewClientConnected?.Invoke(client);
+                    clients.TryAdd(ep.Address, client);
                 });
             }
         }

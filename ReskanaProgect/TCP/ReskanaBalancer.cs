@@ -8,7 +8,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-namespace ReskanaProgect.Network
+namespace ReskanaProgect.TCP
 {
     public class ReskanaBalancer
     {
@@ -27,7 +27,7 @@ namespace ReskanaProgect.Network
         /// <summary>
         /// This event is synchronous!
         /// </summary>
-        public event Action<BufferSegmentStruct> NextPacket;
+        public event Action<BufferSegment> NextPacket;
         /// <summary>
         /// Client must be stopped manually, by calling method!
         /// </summary>
@@ -121,7 +121,7 @@ namespace ReskanaProgect.Network
             connections = new ReskanaClient[0];
         }
 
-        public void Send(in BufferSegmentStruct data)
+        public void Send(in BufferSegment data)
         {
             var mArr = connections;
             for (int i = 0; i < mArr.Length; i++)

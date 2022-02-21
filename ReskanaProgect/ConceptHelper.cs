@@ -60,10 +60,10 @@ namespace ReskanaProgect
 
         struct Tracking
         {
-            public BufferSegmentStruct Payload;
+            public BufferSegment Payload;
             public long Time;
 
-            public Tracking(BufferSegmentStruct payload)
+            public Tracking(BufferSegment payload)
             {
                 Payload = payload;
                 Time = DateTime.Now.Ticks;
@@ -83,16 +83,16 @@ namespace ReskanaProgect
         private List<long> waitingPackets = new List<long>();
         private long rtoCheckerLimiter = DateTime.Now.Ticks;
 
-        public event Action<BufferSegmentStruct> Received;
+        public event Action<BufferSegment> Received;
         public float OneWayPing => pingCounter.Avg;
         public float PacketLoss => packetLoss.Avg * packetLoss.Avg;
         public int OverheadBytes => (int)overhead.AvgInt;
 
         private ObjectPool<Byte[]> bufferPool = new ObjectPool<Byte[]>(() => new byte[20000], 100);
         private byte[] bufferService = new byte[ServicePacket.length];
-        private BufferSegmentStruct receiveStaging = new BufferSegmentStruct(new byte[20000], 0, 0);
-        private BufferSegmentStruct rtoStaging = new BufferSegmentStruct(new byte[20000], 0, 0);
-        private List<BufferSegmentStruct> tempList = new List<BufferSegmentStruct>(4);
+        private BufferSegment receiveStaging = new BufferSegment(new byte[20000], 0, 0);
+        private BufferSegment rtoStaging = new BufferSegment(new byte[20000], 0, 0);
+        private List<BufferSegment> tempList = new List<BufferSegment>(4);
 
         public ConceptHelper()
         {
@@ -108,9 +108,9 @@ namespace ReskanaProgect
 
 
 
-        public void Send(in BufferSegmentStruct data)
+        public void Send(in BufferSegment data)
         {
-            var packet = new BufferSegmentStruct(bufferPool.Get(), 0, data.Length + InternalHeader.length);
+            var packet = new BufferSegment(bufferPool.Get(), 0, data.Length + InternalHeader.length);
             var checksum = ComputeChecksum(data.Buffer, data.StartPosition, data.Length);
             Buffer.BlockCopy(data.Buffer, data.StartPosition, packet.Buffer, InternalHeader.length, data.Length);
             lock (iocpLock)
@@ -136,10 +136,10 @@ namespace ReskanaProgect
             {
                 *((ServicePacket*)(bufferRef)) = packet;
             }
-            remote.IOCP(new BufferSegmentStruct(bufferService, 0, bufferService.Length));
+            remote.IOCP(new BufferSegment(bufferService, 0, bufferService.Length));
         }
 
-        public void IOCP(in BufferSegmentStruct data)
+        public void IOCP(in BufferSegment data)
         {
             int Q_Ping = 10;
             int Q_Loss = 50;
@@ -153,7 +153,7 @@ namespace ReskanaProgect
             iocpInternal(data);
 
 
-            void iocpInternal(BufferSegmentStruct _data)
+            void iocpInternal(BufferSegment _data)
             {
                 ThreadPool.UnsafeQueueUserWorkItem(x =>
                 {
@@ -178,7 +178,7 @@ namespace ReskanaProgect
 
 
 
-        private void ReceiveNext(in BufferSegmentStruct portion)
+        private void ReceiveNext(in BufferSegment portion)
         {
             Buffer.BlockCopy(portion.Buffer, 0, receiveStaging.Buffer, receiveStaging.Length, portion.Length);
             receiveStaging.Length += portion.Length;

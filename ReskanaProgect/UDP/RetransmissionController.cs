@@ -76,10 +76,10 @@ namespace ReskanaProgect
 
         struct Tracking
         {
-            public readonly BufferSegmentStruct Payload;
+            public readonly BufferSegment Payload;
             public readonly long Time;
 
-            public Tracking(BufferSegmentStruct payload)
+            public Tracking(BufferSegment payload)
             {
                 Payload = payload;
                 Time = DateTime.Now.Ticks;
@@ -109,8 +109,8 @@ namespace ReskanaProgect
         private long rtoCheckerLimiter = DateTime.Now.Ticks;
         private long lastReceivedPacket = DateTime.Now.Ticks;
 
-        private Action<BufferSegmentStruct> send;
-        private Action<BufferSegmentStruct> receive;
+        private Action<BufferSegment> send;
+        private Action<BufferSegment> receive;
 
         private ValueGraph pingCounter = new ValueGraph(20);
         private ValueGraph packetLoss = new ValueGraph(30);
@@ -119,15 +119,15 @@ namespace ReskanaProgect
 
         private ObjectPool<Byte[]> bufferPool = new ObjectPool<Byte[]>(() => new byte[Config.SaeaBufferSize], 10); //TODO: Нужен пул размера окна, тк иногда пакеты не могут быть больше если здан MTU
         private byte[] bufferService = new byte[ServicePacket.length];
-        private BufferSegmentStruct receiveStaging = new BufferSegmentStruct(new byte[Config.SaeaBufferSize], 0, 0);
-        private BufferSegmentStruct rtoStaging = new BufferSegmentStruct(new byte[Config.SaeaBufferSize], 0, 0);
-        private List<BufferSegmentStruct> tempList = new List<BufferSegmentStruct>(4);
+        private BufferSegment receiveStaging = new BufferSegment(new byte[Config.SaeaBufferSize], 0, 0);
+        private BufferSegment rtoStaging = new BufferSegment(new byte[Config.SaeaBufferSize], 0, 0);
+        private List<BufferSegment> tempList = new List<BufferSegment>(4);
 
         public float OneWayPing => pingCounter.Avg;
         public float PacketLoss => packetLoss.Avg * packetLoss.Avg;
         public int OverheadBytes => (int)overhead.AvgInt;
 
-        public RetransmissionController(Action<BufferSegmentStruct> send, Action<BufferSegmentStruct> receive)
+        public RetransmissionController(Action<BufferSegment> send, Action<BufferSegment> receive)
         {
             this.send = send;
             this.receive = receive;
@@ -138,9 +138,9 @@ namespace ReskanaProgect
         /// <summary>
         /// This method can be called from ANY threads
         /// </summary>
-        public void Send(in BufferSegmentStruct data)
+        public void Send(in BufferSegment data)
         {
-            var packet = new BufferSegmentStruct(bufferPool.Get(), 0, data.Length + InternalHeader.length);
+            var packet = new BufferSegment(bufferPool.Get(), 0, data.Length + InternalHeader.length);
             int remain = data.Length;
             byte frame = 0;
             byte framesCount = (byte)(data.Length / (Config.MTU - InternalHeader.length));
@@ -181,13 +181,13 @@ namespace ReskanaProgect
             {
                 *((ServicePacket*)(bufferRef)) = packet;
             }
-            send(new BufferSegmentStruct(bufferService, 0, bufferService.Length));
+            send(new BufferSegment(bufferService, 0, bufferService.Length));
         }
 
         /// <summary>
         /// This method can be called from SINGLE thread
         /// </summary>
-        public ReskanaError ReceiveNext(in BufferSegmentStruct portion)
+        public ReskanaError ReceiveNext(in BufferSegment portion)
         {
             Buffer.BlockCopy(portion.Buffer, 0, receiveStaging.Buffer, receiveStaging.Length, portion.Length);
             receiveStaging.Length += portion.Length;
@@ -288,7 +288,7 @@ namespace ReskanaProgect
             return ReskanaError.None;
         }
 
-        private void Defragmentation(in InternalHeader header, BufferSegmentStruct data)
+        private void Defragmentation(in InternalHeader header, BufferSegment data)
         {
             if (header.frame == 255) //single packet with length less than MTU
             {
@@ -296,7 +296,7 @@ namespace ReskanaProgect
                 return;
             }
 
-            BufferSegmentStruct? toReceive = null;
+            BufferSegment? toReceive = null;
             int expectedPosition = (Config.MTU - InternalHeader.length) * header.frame;
             int maxLength = expectedPosition + data.Length;
 
@@ -312,7 +312,7 @@ namespace ReskanaProgect
 
                     if (builder.NumFrames == header.framesCount)
                     {
-                        toReceive = new BufferSegmentStruct(builder.Buffer, 0, builder.MaxLength);
+                        toReceive = new BufferSegment(builder.Buffer, 0, builder.MaxLength);
                         buildingPackets.Remove(header.wholePacketId);
                     }
                 }

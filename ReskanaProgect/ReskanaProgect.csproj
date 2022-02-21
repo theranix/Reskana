@@ -55,16 +55,16 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BufferSegmentStruct.cs" />
     <Compile Include="BufferSegment.cs" />
+    <Compile Include="Helpers\Polling.cs" />
     <Compile Include="UDP\RetransmissionController.cs" />
     <Compile Include="ConceptHelper.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="Helpers\SerializationWrapper.cs" />
     <Compile Include="Internal\ReskanaConnection.cs" />
-    <Compile Include="Network\ReskanaBalancer.cs" />
-    <Compile Include="Network\ReskanaClient.cs" />
-    <Compile Include="Network\ReskanaServer.cs" />
+    <Compile Include="TCP\ReskanaBalancer.cs" />
+    <Compile Include="TCP\ReskanaClient.cs" />
+    <Compile Include="TCP\ReskanaServer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UDP\ReskanaClientUdp.cs" />
