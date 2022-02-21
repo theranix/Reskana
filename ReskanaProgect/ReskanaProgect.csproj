@@ -1,0 +1,80 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{3A596C14-0222-4C42-A774-6A61F36CE7DD}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>ReskanaProgect</RootNamespace>
+    <AssemblyName>ReskanaProgect</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>x86</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>7.2</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <LangVersion>7.2</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="LiteNetLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\LiteNetLib.0.9.5.2\lib\net35\LiteNetLib.dll</HintPath>
+    </Reference>
+    <Reference Include="ManualPacketSerialization">
+      <HintPath>Z:\ADMIN\DESKTOP\WOSB_common\Binary\ManualPacketSerialization.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="TheraEngine.Utilites, Version=1.0.0.0, Culture=neutral, PublicKeyToken=fe9e5be8463f8058, processorArchitecture=x86">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>Z:\ADMIN\DESKTOP\WOSB_client_slim\Binary\Engine\TheraEngine.Utilites.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="BufferSegmentStruct.cs" />
+    <Compile Include="BufferSegment.cs" />
+    <Compile Include="UDP\RetransmissionController.cs" />
+    <Compile Include="ConceptHelper.cs" />
+    <Compile Include="Config.cs" />
+    <Compile Include="Helpers\SerializationWrapper.cs" />
+    <Compile Include="Internal\ReskanaConnection.cs" />
+    <Compile Include="Internal\StagingControl.cs" />
+    <Compile Include="Network\ReskanaBalancer.cs" />
+    <Compile Include="Network\ReskanaClient.cs" />
+    <Compile Include="Network\ReskanaServer.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UDP\ReskanaClientUdp.cs" />
+    <Compile Include="UDP\ReskanaServerUdp.cs" />
+    <Compile Include="Utils\ConcurrentPool.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
