@@ -11,13 +11,12 @@ Solution for real-time applications with low-latency. Key features:
 
 First test: 5000 bytes packets
 
-
-Packet loss | Avg Ping TCP | Avg Ping here
---------------------------------------------
-0           | 25           | 22
-10          | 45           | 27
-20          | 62           | 36
-30          | 90           | 48
-40          | 170          | 55
-50          | disconnect   | 75
-75          | disconnect   | 155
+| Packet loss | Avg Ping TCP | Avg Ping here  |
+| ------------| -------------|----------------|
+| 0           | 25           | 22             |
+| 10          | 45           | 27             |
+| 20          | 62           | 36             |
+| 30          | 90           | 48             |
+| 40          | 170          | 55             |
+| 50          | disconnect   | 75             |
+| 75          | disconnect   | 155            |
