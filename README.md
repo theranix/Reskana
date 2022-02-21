@@ -1,15 +1,16 @@
 # High-performance controlled UDP client-server
 
 Solution for real-time applications with low-latency. Key features:
-- Delivery guarantee (but there is guarantee of order): quick retransmission with low overhead. It works fine with high packet loss.
+- Delivery guarantee (but there is no guarantee of order): quick retransmission with low overhead. It works fine with high packet loss.
 - Custom fragmentation: each part of packet will be tracked.
-- Session-based approach: creating connections, included simple app-level ddos protection
+- Multithreaded session-based approach: creating connections, included simple app-level ddos protection
 - Additional checksum, end-to-end encryption
-- QUIC like approach
+- QUIC-like approach
+- thread safety
 
 # work in progress
 
-First test: 5000 bytes packets
+First test: 5000 byte packets
 
 | Packet loss | Avg Ping TCP | Avg Ping here  |
 | ------------| -------------|----------------|
