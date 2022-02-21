@@ -1,4 +1,7 @@
-﻿using ReskanaProgect.Internal;
+﻿//(c) Качмар Сергей
+
+
+using ReskanaProgect.Internal;
 using ReskanaProgect.Utils;
 using System;
 using System.Collections.Concurrent;

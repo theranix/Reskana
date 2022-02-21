@@ -1,4 +1,7 @@
-﻿using LiteNetLib;
+﻿//(c) Качмар Сергей
+
+
+using LiteNetLib;
 using LiteNetLib.Utils;
 using ReskanaProgect.Network;
 using System;

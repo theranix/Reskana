@@ -62,7 +62,6 @@
     <Compile Include="Config.cs" />
     <Compile Include="Helpers\SerializationWrapper.cs" />
     <Compile Include="Internal\ReskanaConnection.cs" />
-    <Compile Include="Internal\StagingControl.cs" />
     <Compile Include="Network\ReskanaBalancer.cs" />
     <Compile Include="Network\ReskanaClient.cs" />
     <Compile Include="Network\ReskanaServer.cs" />
