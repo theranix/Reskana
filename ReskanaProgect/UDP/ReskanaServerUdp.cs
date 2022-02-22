@@ -35,7 +35,7 @@ namespace ReskanaProgect.TCP
         private IPEndPoint listenFrom;
 
         //TODO: Refactor
-        private ConcurrentDictionary<IPAddress, ReskanaClientUdp> clients = new ConcurrentDictionary<IPAddress, ReskanaClientUdp>();
+        public ConcurrentDictionary<IPEndPoint, ReskanaClientUdp> clients = new ConcurrentDictionary<IPEndPoint, ReskanaClientUdp>();
 
         public Socket Test => listener;
 
@@ -102,10 +102,14 @@ namespace ReskanaProgect.TCP
                             Config.InternalErrorsLogger("ReskanaUDP: Error while FetchConnection");
                     }
                 }
+                else if (saea.Buffer[0] == 254)
+                {
+                }
                 else
                 {
-                    if (clients.TryGetValue(ipEndPoint.Address, out var client))
-                        client.ExternalApiReceive(new BufferSegment(saea.Buffer, 0, saea.BytesTransferred));
+                    if (clients.TryGetValue(ipEndPoint, out var client))
+                        client.test.QueueData(new BufferSegment(saea.Buffer, 0, saea.BytesTransferred).Copy(0, saea.BytesTransferred));
+                                //client.ExternalApiReceive(new BufferSegment(saea.Buffer, 0, saea.BytesTransferred));
                 }
             }
             Iteration(saea);
@@ -128,7 +132,7 @@ namespace ReskanaProgect.TCP
                 {
                     var client = new ReskanaClientUdp(ep, this);
                     NewClientConnected?.Invoke(client);
-                    clients.TryAdd(ep.Address, client);
+                    clients.TryAdd(ep, client);
                 });
             }
         }

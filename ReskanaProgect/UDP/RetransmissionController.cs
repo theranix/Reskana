@@ -114,7 +114,7 @@ namespace ReskanaProgect
 
         private ValueGraph pingCounter = new ValueGraph(20);
         private ValueGraph packetLoss = new ValueGraph(30);
-        private ValueGraph overhead = new ValueGraph(30);
+        private long overhead = 0, totalReceived = 0, totalSendReceivePackets;
         private List<int> waitingPackets = new List<int>();
 
         private ObjectPool<Byte[]> bufferPool = new ObjectPool<Byte[]>(() => new byte[Config.SaeaBufferSize], 10); //TODO: Нужен пул размера окна, тк иногда пакеты не могут быть больше если здан MTU
@@ -125,7 +125,9 @@ namespace ReskanaProgect
 
         public float OneWayPing => pingCounter.Avg;
         public float PacketLoss => packetLoss.Avg * packetLoss.Avg;
-        public int OverheadBytes => (int)overhead.AvgInt;
+        public long OverheadBytes => overhead;
+        public long TotalReceivedBytes => totalReceived;
+        public long TotalSendReceivePackets => totalSendReceivePackets;
 
         public RetransmissionController(Action<BufferSegment> send, Action<BufferSegment> receive)
         {
@@ -167,6 +169,7 @@ namespace ReskanaProgect
                             wholePacketId);
                     }
                     trackOutcoming.Add(packetId, new Tracking(packet));
+                    totalSendReceivePackets++;
                 }
                 packet.Length = count + InternalHeader.length;
                 send(packet);
@@ -238,11 +241,12 @@ namespace ReskanaProgect
                         waitingPackets.Remove(nextHeader.control);
                         if (waitingPackets.Count == 0)
                             waitingPackets.Add(nextHeader.control == int.MaxValue ? 0 : (nextHeader.control + 1));
-                        overhead.Push(0);
+                        totalReceived += nextHeader.totalLength * 2; //TODO remove
+                        totalSendReceivePackets++;
                     }
                     else
                     {
-                        overhead.Push(nextHeader.totalLength);
+                        overhead += nextHeader.totalLength;
                     }
                     readBytes = nextHeader.totalLength;
                 }
@@ -268,6 +272,11 @@ namespace ReskanaProgect
                                 trackOutcoming.Remove(nextHeader.Operating);
                                 bufferPool.Return(tracking.Payload.Buffer);
                                 packetLoss.Push(0f);
+                                totalReceived += ServicePacket.length;
+                            }
+                            else
+                            {
+                                overhead += ServicePacket.length;
                             }
                         }
                     }

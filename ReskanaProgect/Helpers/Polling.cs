@@ -16,6 +16,7 @@ namespace ReskanaProgect.Helpers
 
         private volatile int status;
         private ConcurrentQueue<T> buffer = new ConcurrentQueue<T>();
+        private object internalLocker = new object(); 
 
         public Polling()
         {
@@ -30,9 +31,12 @@ namespace ReskanaProgect.Helpers
                 status = 1;
                 ThreadPool.UnsafeQueueUserWorkItem(x =>
                     {
-                        //TODO
-                        while (buffer.TryDequeue(out var item))
-                            Complete?.Invoke(item);
+                        lock (internalLocker)
+                        {
+                            while (status == 1 && buffer.TryDequeue(out var item))
+                                Complete?.Invoke(item);
+                        }
+                        status = 0;
                     }, null);
             }
         }

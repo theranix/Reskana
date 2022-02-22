@@ -1,6 +1,7 @@
 ﻿//(c) Качмар Сергей
 
 
+using ReskanaProgect.Helpers;
 using ReskanaProgect.Internal;
 using System;
 using System.Collections.Generic;
@@ -46,6 +47,7 @@ namespace ReskanaProgect.TCP
         private RetransmissionController net;
         public RetransmissionController Network => net;
 
+        internal Polling<BufferSegment> test = new Polling<BufferSegment>() ;
 
         public ReskanaClientUdp(IPEndPoint ep, ReskanaServerUdp server)
         {
@@ -61,6 +63,7 @@ namespace ReskanaProgect.TCP
             receiveSaea.Completed += OnReceived;*/
 
             net = new RetransmissionController(this.SendInternal, x => NextPacket?.Invoke(x));
+            test.Complete = ExternalApiReceive;
         }
 
         public ReskanaClientUdp(IPEndPoint ep)
@@ -72,6 +75,7 @@ namespace ReskanaProgect.TCP
             receiveSaea.Completed += OnReceived;
 
             net = new RetransmissionController(this.SendInternal, x => NextPacket?.Invoke(x));
+            test.Complete = ExternalApiReceive;
         }
 
         /// <summary>
@@ -171,7 +175,7 @@ namespace ReskanaProgect.TCP
             }
         }
 
-        public void ExternalApiReceive(in BufferSegment segment)
+        public void ExternalApiReceive(BufferSegment segment)
         {
             var err = net.ReceiveNext(segment);
             if (err != ReskanaError.None)
@@ -231,32 +235,34 @@ namespace ReskanaProgect.TCP
 
         private void SendInternal(BufferSegment data)
         {
-            lock (socketStatusLock)
+            // lock (socketStatusLock)
+            //{
+            int b = 0;
+            try
             {
-                int b = 0;
-                try
-                {
-                    //Среднее время: 0.02 мс
-                    //Среднее время async-версии не отличается, но имеет более высокий оверхэд
-                    b = connection.Api.SendTo(data.Buffer, data.StartPosition, data.Length, SocketFlags.None, endPoint);
-                }
-                catch (ObjectDisposedException)
-                {
-                    return;
-                }
-                catch (Exception e)
-                {
-                    //b : 0
-                }
+                //Среднее время: 0.02 мс
+                //Среднее время async-версии не отличается, но имеет более высокий оверхэд
+                b = connection.Api.SendTo(data.Buffer, data.StartPosition, data.Length, SocketFlags.None, endPoint);
+            }
+            catch (ObjectDisposedException)
+            {
+                return;
+            }
+            catch (Exception e)
+            {
+                //b : 0
+            }
 
-                if (b > 0)
-                {
-                    data.Length -= b;
-                    data.StartPosition += b;
-                    if (data.Length > 0)
-                        SendInternal(data);
-                }
-                else
+            if (b > 0)
+            {
+                data.Length -= b;
+                data.StartPosition += b;
+                if (data.Length > 0)
+                    SendInternal(data);
+            }
+            else
+            {
+                lock (socketStatusLock)
                 {
                     if (connectionStatusFlags >= 1)
                     {
@@ -265,8 +271,8 @@ namespace ReskanaProgect.TCP
                         return;
                     }
                     connectionStatusFlags++;
-                    SendInternal(data); //try again
                 }
+                SendInternal(data); //try again
             }
         }
 

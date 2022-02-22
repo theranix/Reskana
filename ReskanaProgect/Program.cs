@@ -131,30 +131,50 @@ namespace ReskanaProgect
             if (useSERVER)
             {
                 var pssLock = new object();
-                int pps1 = 0;
                 var tt = Stopwatch.StartNew();
                 var tt2 = Stopwatch.StartNew();
-
                 var udpServer = new ReskanaServerUdp(10, new IPEndPoint(IPAddress.Any, 27777));
+
+                new Thread(() =>
+                {
+                    while (true)
+                    {
+                        if (tt.ElapsedMilliseconds > 100)
+                        {
+                            var ping = new ValueCounter();
+                            var loss = new ValueCounter();
+                            var overhead = 0L;
+                            var total = 0L;
+                            var pps1 = 0L;
+                            foreach (var item in udpServer.clients)
+                            {
+                                pps1 += item.Value.Network.TotalSendReceivePackets;
+                                ping.Push(item.Value.Network.OneWayPing);
+                                loss.Push(item.Value.Network.PacketLoss);
+                                overhead += item.Value.Network.OverheadBytes;
+                                total += item.Value.Network.TotalReceivedBytes * 2;
+                            }
+
+                            Console.Title = "pps " + (long)(pps1 / tt2.Elapsed.TotalSeconds) +
+                                ", ping: " + Math.Round(ping.Avg, 1) +
+                                ", loss: " + Math.Round(loss.Avg, 1) +
+                                ", overhead: " + (overhead / 1024) + "kb" +
+                                ", payload: " + (total / 1024) + "kb" +
+                                ", mb/s: " + (int)(total / 1024 / 1024 / tt2.Elapsed.TotalSeconds) +
+                                ", overhead: " + Math.Round(overhead * 100.0 / total) + "%";
+                            tt.Restart();
+                        }
+
+                        Thread.Sleep(100);
+                    }
+                }).Start();
+
                 udpServer.NewClientConnected += (x) =>
                 {
                     Console.WriteLine("Client connected " + x.endPoint);
                     x.NextPacket += (packet) =>
                     {
                         x.Send(packet);
-
-                        lock (pssLock)
-                        {
-                            pps1++;
-                            if (tt.ElapsedMilliseconds > 100)
-                            {
-                                Console.Title = "pps " + (long)(pps1 / tt2.Elapsed.TotalSeconds) +
-                                    ", ping: " + Math.Round(x.Network.OneWayPing, 1) +
-                                    ", loss: " + Math.Round(x.Network.PacketLoss, 1) +
-                                    ", overhead: " + x.Network.OverheadBytes + "b";
-                                tt.Restart();
-                            }
-                        }
                     };
                     if (x.TryConnect(udpServer.Test))
                     {
@@ -173,7 +193,7 @@ namespace ReskanaProgect
 
             if (useCLIENT)
             {
-                const int numClients = 10;
+                const int numClients = 1000;
                 const int numPacketsLifetime = int.MaxValue;//10000;
                 int currentClients = 0;
                 object locker2 = new object();
