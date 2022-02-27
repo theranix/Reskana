@@ -4,6 +4,7 @@
 using ReskanaProgect.Helpers;
 using ReskanaProgect.Internal;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -38,6 +39,7 @@ namespace ReskanaProgect.TCP
         internal IPEndPoint endPoint;
 
         private SocketAsyncEventArgs receiveSaea;
+        private SocketAsyncEventArgs sendSaea;
         private int asyncPollFlags = 0;
         private int connectionStatusFlags = 0;
         private bool isStarted;
@@ -49,33 +51,32 @@ namespace ReskanaProgect.TCP
 
         internal Polling<BufferSegment> test = new Polling<BufferSegment>() ;
 
-        public ReskanaClientUdp(IPEndPoint ep, ReskanaServerUdp server)
+        public ReskanaClientUdp(IPEndPoint ep, ReskanaServerUdp server) : this()
         {
             IsAtServer = true;
             this.server = server;
             this.endPoint = ep;
+        }
 
-            isStarted = true;
+        public ReskanaClientUdp(IPEndPoint ep) : this()
+        {
+            this.endPoint = ep;
+            IsAtServer = false;
+        }
+
+        public ReskanaClientUdp()
+        {
+            net = new RetransmissionController(this.SendInternal, x => NextPacket?.Invoke(x));
+            test.Complete = ExternalApiReceive;
+
             receiveSaea = new SocketAsyncEventArgs();
             receiveSaea.SetBuffer(new byte[Config.SaeaBufferSize], 0, Config.SaeaBufferSize);
             receiveSaea.Completed += OnReceived;
             /*receiveSaea = //server.ringSaeaPool.Get();
             receiveSaea.Completed += OnReceived;*/
-
-            net = new RetransmissionController(this.SendInternal, x => NextPacket?.Invoke(x));
-            test.Complete = ExternalApiReceive;
-        }
-
-        public ReskanaClientUdp(IPEndPoint ep)
-        {
-            this.endPoint = ep;
-            IsAtServer = false;
-            receiveSaea = new SocketAsyncEventArgs();
-            receiveSaea.SetBuffer(new byte[Config.SaeaBufferSize], 0, Config.SaeaBufferSize);
-            receiveSaea.Completed += OnReceived;
-
-            net = new RetransmissionController(this.SendInternal, x => NextPacket?.Invoke(x));
-            test.Complete = ExternalApiReceive;
+            sendSaea = new SocketAsyncEventArgs();
+            sendSaea.SetBuffer(new byte[Config.SaeaBufferSize], 0, Config.SaeaBufferSize);
+            sendSaea.Completed += OnSend;
         }
 
         /// <summary>
@@ -89,6 +90,7 @@ namespace ReskanaProgect.TCP
                 isStarted = true;
                 int numRetries = 4;
 
+
                 while (numRetries-- > 0)
                 {
                     try
@@ -100,6 +102,7 @@ namespace ReskanaProgect.TCP
                                 throw new SocketException();
                             //254
                             EndPoint localEp = endPoint;
+                            //Этот ReceiveFrom никак не пересекается с серверным ReceiveAsync
                             var response = connection.Api.ReceiveFrom(new byte[1], ref localEp); //endPoint will be set as remote address
                             endPoint = localEp as IPEndPoint;
                         }
@@ -117,6 +120,7 @@ namespace ReskanaProgect.TCP
                         return false;
                     break;
                 }
+
                 receiveSaea.RemoteEndPoint = endPoint;
                 connectionStatusFlags = 0;
                 return true;
@@ -231,6 +235,19 @@ namespace ReskanaProgect.TCP
             PutPacket(data, sendSaea.Buffer, 0, control);
             sendSaea.SetBuffer(0, data.Length + InternalHeader.length);
             StartSending();*/
+        }
+
+        bool Q = false;
+        ConcurrentQueue<BufferSegment> sendQueue = new ConcurrentQueue<BufferSegment>();
+
+        private unsafe void OnSend(object e, SocketAsyncEventArgs saea)
+        {
+            lock (sendQueue)
+            {
+                Q = false;
+            }
+            if (sendQueue.TryDequeue(out var r))
+                SendInternal(r);
         }
 
         private void SendInternal(BufferSegment data)

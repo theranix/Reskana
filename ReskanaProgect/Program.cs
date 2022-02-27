@@ -5,6 +5,7 @@ using LiteNetLib;
 using LiteNetLib.Utils;
 using ReskanaProgect.TCP;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -165,7 +166,18 @@ namespace ReskanaProgect
                             tt.Restart();
                         }
 
-                        Thread.Sleep(100);
+                        var rt = Stopwatch.StartNew();
+                        foreach (var item in udpServer.clients)
+                        {
+                            if (!item.Value.RTOHelper())
+                            {
+                                //TODO
+                            }
+                        }
+                        rt.Stop();
+                        Thread.Sleep(Math.Max(0, 16 - (int)rt.ElapsedMilliseconds));
+                        if (rt.ElapsedMilliseconds > 16)
+                            Console.WriteLine("Server-side overhead ms: " + rt.ElapsedMilliseconds);
                     }
                 }).Start();
 
@@ -179,13 +191,6 @@ namespace ReskanaProgect
                     if (x.TryConnect(udpServer.Test))
                     {
                         x.StartReceiving();
-                        new Thread(xx =>
-                        {
-                            while (x.RTOHelper())
-                            {
-                                Thread.Sleep(16);
-                            }
-                        }).Start();
                     }
                 };
                 udpServer.Start();
@@ -193,10 +198,27 @@ namespace ReskanaProgect
 
             if (useCLIENT)
             {
-                const int numClients = 1000;
+                const int numClients = 10;
                 const int numPacketsLifetime = int.MaxValue;//10000;
                 int currentClients = 0;
                 object locker2 = new object();
+                var clientsClients = new ConcurrentBag<ReskanaClientUdp>();
+
+                new Thread(x =>
+                {
+                    while (true)
+                    {
+                        var rt = Stopwatch.StartNew();
+                        foreach (var item in clientsClients)
+                        {
+                            item.RTOHelper();
+                        }
+                        rt.Stop();
+                        Thread.Sleep(Math.Max(0, 16 - (int)rt.ElapsedMilliseconds));
+                        if (rt.ElapsedMilliseconds > 16)
+                            Console.WriteLine("Server-side overhead ms: " + rt.ElapsedMilliseconds);
+                    }
+                }).Start();
 
                 while (true)
                 {
@@ -212,26 +234,22 @@ namespace ReskanaProgect
                         {
                             udpClient.Disconnect(false);
                             lock (locker2)
+                            {
                                 currentClients--;
+                                //TODO clientsClients.Remove
+                            }
                         }
                     };
 
                     if (udpClient.TryConnect(null))
                     {
+                        clientsClients.Add(udpClient);
                         udpClient.StartReceiving();
                         udpClient.Send(new BufferSegment()
                         {
                             Buffer = Enumerable.Range(0, 5000).Select(x => (byte)(x % 256)).ToArray(),
                             Length = 5000
                         });
-
-                        new Thread(x =>
-                        {
-                            while (udpClient.RTOHelper())
-                            {
-                                Thread.Sleep(16);
-                            }
-                        }).Start();
                         lock (locker2)
                             currentClients++;
                     }
@@ -244,6 +262,7 @@ namespace ReskanaProgect
                     {
                         Thread.Sleep(10);
                     }
+                    Thread.Sleep(50);
                 }
             }
 
